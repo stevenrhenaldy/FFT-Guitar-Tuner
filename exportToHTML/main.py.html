@@ -1,0 +1,176 @@
+<html>
+<head>
+<title>main.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6897bb;}
+.s4 { color: #6a8759;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+main.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pyaudio</span>
+<span class="s0">import </span><span class="s1">struct</span>
+<span class="s0">import </span><span class="s1">numpy </span><span class="s0">as </span><span class="s1">np</span>
+<span class="s0">import </span><span class="s1">time</span>
+<span class="s0">import </span><span class="s1">matplotlib.pyplot </span><span class="s0">as </span><span class="s1">plt</span>
+
+<span class="s2"># INITIALIZATION</span>
+<span class="s1">CHUNK = </span><span class="s3">1024 </span><span class="s1">* </span><span class="s3">4    </span><span class="s2"># Set Chunk size to 4068 to get the detail number</span>
+<span class="s1">FORMAT = pyaudio.paInt16</span>
+<span class="s1">CHANNEL = </span><span class="s3">1         </span><span class="s2"># Mic input channel</span>
+<span class="s1">RATE = </span><span class="s3">44100        </span><span class="s2"># Audio sampling rate (Default: 44100Hz)</span>
+
+<span class="s1">p = pyaudio.PyAudio()</span>
+
+<span class="s0">def </span><span class="s1">FFT(arr):</span>
+    <span class="s2">#Cooley-Tukey Algorithm with recursive function</span>
+    <span class="s2"># input using numpy array because it has native support of complex number</span>
+    <span class="s1">length = len(arr)   </span><span class="s2"># get the length of the array</span>
+
+    <span class="s0">if </span><span class="s1">length == </span><span class="s3">1</span><span class="s1">:</span>
+        <span class="s2"># return the array if the length is equal to one</span>
+        <span class="s0">return </span><span class="s1">arr</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s2"># Split the array into even and odd array</span>
+        <span class="s1">ARR_even = FFT(arr[::</span><span class="s3">2</span><span class="s1">])</span>
+        <span class="s1">ARR_odd = FFT(arr[</span><span class="s3">1</span><span class="s1">::</span><span class="s3">2</span><span class="s1">])</span>
+
+        <span class="s1">factor = np.exp(-</span><span class="s3">2j </span><span class="s1">* np.pi * np.arange(length) / length)</span>
+
+        <span class="s2"># Put them back into one array</span>
+        <span class="s1">ARR = np.concatenate([ARR_even + factor[:int(length / </span><span class="s3">2</span><span class="s1">)] * ARR_odd</span><span class="s0">,</span><span class="s1">ARR_even + factor[int(length / </span><span class="s3">2</span><span class="s1">):] * ARR_odd])</span>
+        <span class="s0">return </span><span class="s1">ARR</span>
+
+<span class="s0">def </span><span class="s1">getNote(freq):</span>
+    <span class="s2"># Get musical note from the nearest frequency</span>
+    <span class="s0">if </span><span class="s3">80</span><span class="s1">&lt;freq&lt;</span><span class="s3">95</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'low E'</span>
+    <span class="s0">elif </span><span class="s3">95</span><span class="s1">&lt;freq&lt;</span><span class="s3">125</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'A'</span>
+    <span class="s0">elif </span><span class="s3">130</span><span class="s1">&lt;freq&lt;</span><span class="s3">157</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'D'</span>
+    <span class="s0">elif </span><span class="s3">170</span><span class="s1">&lt;freq&lt;</span><span class="s3">210</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'G'</span>
+    <span class="s0">elif </span><span class="s3">220</span><span class="s1">&lt;freq&lt;</span><span class="s3">260</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'B'</span>
+    <span class="s0">elif </span><span class="s3">310</span><span class="s1">&lt;freq&lt;</span><span class="s3">350</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s4">'high E'</span>
+
+
+<span class="s2"># THE PROGRAM STARTS HERE</span>
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s4">'__main__'</span><span class="s1">:</span>
+    <span class="s2"># Audio stream using pyAudio</span>
+    <span class="s1">stream = p.open(</span>
+        <span class="s1">format=FORMAT</span><span class="s0">,</span>
+        <span class="s1">channels=CHANNEL</span><span class="s0">,</span>
+        <span class="s1">rate=RATE</span><span class="s0">,</span>
+        <span class="s1">input=</span><span class="s0">True,</span>
+        <span class="s1">output=</span><span class="s0">True,</span>
+        <span class="s1">frames_per_buffer=CHUNK</span>
+    <span class="s1">)</span>
+
+    <span class="s2"># Create Plot using matplotlib</span>
+    <span class="s1">fig</span><span class="s0">, </span><span class="s1">(ax</span><span class="s0">, </span><span class="s1">ax2) = plt.subplots(</span><span class="s3">2</span><span class="s1">)</span>
+    <span class="s1">x = np.arange(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">2</span><span class="s1">*CHUNK</span><span class="s0">,</span><span class="s3">2</span><span class="s1">)</span>
+    <span class="s1">x_fft = np.linspace(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">RATE</span><span class="s0">, </span><span class="s1">CHUNK)</span>
+
+    <span class="s1">line</span><span class="s0">, </span><span class="s1">= ax.plot(x</span><span class="s0">, </span><span class="s1">np.random.rand(CHUNK)</span><span class="s0">, </span><span class="s4">'-'</span><span class="s0">, </span><span class="s1">lw=</span><span class="s3">2</span><span class="s1">)</span>
+    <span class="s1">line_fft</span><span class="s0">, </span><span class="s1">= ax2.semilogx(x_fft</span><span class="s0">, </span><span class="s1">np.random.rand(CHUNK)</span><span class="s0">, </span><span class="s4">'-'</span><span class="s0">, </span><span class="s1">lw=</span><span class="s3">2</span><span class="s1">)</span>
+
+    <span class="s1">ax.set_title(</span><span class="s4">&quot;AUDIO WAVEFORM&quot;</span><span class="s1">)</span>
+    <span class="s1">ax.set_xlabel(</span><span class="s4">'samples'</span><span class="s1">)</span>
+    <span class="s1">ax.set_ylabel(</span><span class="s4">'volume'</span><span class="s1">)</span>
+    <span class="s1">ax.set_ylim(-</span><span class="s3">60000</span><span class="s0">, </span><span class="s3">60000</span><span class="s1">)</span>
+    <span class="s1">ax.set_xlim(</span><span class="s3">0</span><span class="s0">, </span><span class="s1">CHUNK)</span>
+    <span class="s1">ax2.set_ylim(</span><span class="s3">0</span><span class="s0">, </span><span class="s3">20</span><span class="s1">)</span>
+    <span class="s1">fig.show()</span>
+
+    <span class="s1">ax2.set_xlim(</span><span class="s3">20</span><span class="s0">, </span><span class="s1">RATE/</span><span class="s3">10</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">82.407</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">110</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">146.832</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">195.998</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">256.942</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+    <span class="s1">ax2.axvline(x=</span><span class="s3">329.628</span><span class="s0">,</span><span class="s1">color=</span><span class="s4">'gray'</span><span class="s0">,</span><span class="s1">linestyle=</span><span class="s4">'--'</span><span class="s1">)</span>
+
+    <span class="s1">label_freq = plt.xlabel(</span><span class="s4">''</span><span class="s1">)</span>
+
+    <span class="s1">label_note = plt.figtext(</span><span class="s3">0.8 </span><span class="s0">, </span><span class="s3">0 </span><span class="s0">,</span><span class="s4">'TEST'</span><span class="s0">, </span><span class="s1">fontsize=</span><span class="s3">14</span><span class="s1">)</span>
+
+    <span class="s1">plt.show(block=</span><span class="s0">False</span><span class="s1">)</span>
+
+    <span class="s2"># Performance enquiry</span>
+    <span class="s1">frame_count = </span><span class="s3">0</span>
+    <span class="s1">start_time = time.time()</span>
+    <span class="s1">highest = </span><span class="s3">0</span>
+
+    <span class="s2"># Start the infinite loop for the program</span>
+    <span class="s0">while </span><span class="s3">1</span><span class="s1">:</span>
+        <span class="s2"># Read audio stream data with size of CHUNK, and store it to data as binary data.</span>
+        <span class="s1">data = stream.read(CHUNK)</span>
+
+        <span class="s2"># Parse the audio binary data to integer Array</span>
+        <span class="s1">dataInt = struct.unpack(str(CHUNK) + </span><span class="s4">'h'</span><span class="s0">, </span><span class="s1">data)</span>
+
+        <span class="s2"># Plot the audio data as time-amplitude based plot</span>
+        <span class="s1">line.set_ydata(dataInt)</span>
+
+        <span class="s2"># Transform time-amplitude based audio data to Frequency based data to get the audio frequency using FFT</span>
+        <span class="s1">y_fft = FFT(dataInt)</span>
+
+        <span class="s2"># FFT returns complex number, so we need to parse the complex number to real number.</span>
+        <span class="s1">getHeight = np.abs(y_fft[</span><span class="s3">0</span><span class="s1">:CHUNK])*</span><span class="s3">2</span><span class="s1">/(</span><span class="s3">256</span><span class="s1">*CHUNK)</span>
+
+        <span class="s2"># Plot the Frequency based data</span>
+        <span class="s1">line_fft.set_ydata(getHeight)</span>
+
+        <span class="s2"># Cut the array to get rid of high frequency noise</span>
+        <span class="s2"># Low pass filter may be a better choice but this method also works well</span>
+        <span class="s1">getHeight_cut = getHeight[:</span><span class="s3">4000</span><span class="s1">]</span>
+
+        <span class="s2"># Take the index of highest amplitude from inside of the frequency array</span>
+        <span class="s2"># We use this trick to get the most dominant frequency</span>
+        <span class="s1">getAmplitude = getHeight_cut.argmax()</span>
+
+        <span class="s2"># Times the index of the highest amplitude with sample rate / full array size</span>
+        <span class="s1">Freq = getAmplitude*(RATE/CHUNK)</span>
+
+        <span class="s2"># Set some threshold to get rid of low amplitude audio noise</span>
+        <span class="s1">threshold = </span><span class="s3">5   </span><span class="s2"># Change the frequency only if the amplitude is more than threshold</span>
+        <span class="s1">threshold2 = </span><span class="s3">2  </span><span class="s2"># Hide the note if the amplitude is less than threshold2</span>
+
+        <span class="s0">if</span><span class="s1">(getHeight_cut[getAmplitude]&gt;=threshold):</span>
+            <span class="s1">highest = Freq</span>
+
+        <span class="s1">label_freq.set_text(</span><span class="s4">f&quot;Loudest Frequency: </span><span class="s0">{</span><span class="s1">highest</span><span class="s0">}</span><span class="s4">Hz&quot;</span><span class="s1">)</span>
+
+        <span class="s0">if</span><span class="s1">(getHeight_cut[getAmplitude]&gt;=threshold2):</span>
+            <span class="s1">label_note.set_text(getNote(highest))</span>
+        <span class="s0">else</span><span class="s1">:</span>
+            <span class="s1">label_note.set_text(</span><span class="s4">''</span><span class="s1">)</span>
+
+        <span class="s2"># Terminal logger for debugging purpose and to get FPS</span>
+        <span class="s1">print(</span><span class="s4">f&quot;</span><span class="s0">{</span><span class="s1">Freq</span><span class="s0">}</span><span class="s4">Hz Note: </span><span class="s0">{</span><span class="s1">getNote(highest)</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+
+        <span class="s0">try</span><span class="s1">:</span>
+            <span class="s2"># Draw every updates</span>
+            <span class="s1">fig.canvas.draw()</span>
+            <span class="s1">fig.canvas.flush_events()</span>
+            <span class="s1">frame_count +=</span><span class="s3">1</span>
+
+        <span class="s0">except</span><span class="s1">:</span>
+            <span class="s2"># Exit if user click the X sign in matplotlib window</span>
+            <span class="s1">frame_rate = frame_count / (time.time() - start_time)   </span><span class="s2"># Get the frame rate</span>
+            <span class="s1">print(</span><span class="s4">&quot;Stream stopped&quot;</span><span class="s1">)</span>
+            <span class="s1">print(</span><span class="s4">f&quot;Average frame rate = </span><span class="s0">{</span><span class="s1">frame_rate</span><span class="s0">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+            <span class="s0">break</span></pre>
+</body>
+</html>
